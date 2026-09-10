@@ -38,7 +38,7 @@ export default function Login() {
             <GasFlame size={48} className="w-12 h-12" />
           </div>
           <h1 className="text-3xl font-serif mb-1 text-[var(--color-text-primary)]">GNV Manager</h1>
-          <span className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-text-secondary)] mb-2">Ingeniería & Control Termodinámico</span>
+          <span className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-text-secondary)] mb-2">Ingeniería y Control</span>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">Inicia sesión para acceder al sistema</p>
         </div>
 

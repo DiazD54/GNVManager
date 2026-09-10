@@ -38,7 +38,7 @@ export default function SaaSLayout() {
           <GasFlame size={28} />
           <div>
             <h1 className="text-xl font-serif font-bold tracking-tight leading-none text-[var(--color-text-primary)]">GNV Manager</h1>
-            <span className="text-[10px] font-mono tracking-widest uppercase text-[var(--color-text-secondary)]">Sistemas GNC</span>
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[var(--color-text-secondary)]">Ingeniería y Control</span>
           </div>
         </div>
 
