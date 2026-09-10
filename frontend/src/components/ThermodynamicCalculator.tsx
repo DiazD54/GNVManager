@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { calculateTransfer, psiToBar, celsiusToKelvin, barToPsi } from '../domain/thermodynamicEngine';
+import { thermodynamicsService } from '../core/api/thermodynamic.service';
+import { psiToBar, celsiusToKelvin, barToPsi } from '../core/utils/UnitConversion';
 import { MODULE_PRESETS } from '../domain/modulePresets';
 import { Settings2, ArrowRight, Gauge, Thermometer, Database } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -15,18 +16,36 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
 
   const [result, setResult] = useState({ mass_kg: 0, volume_Sm3: 0, massInitial_kg: 0, massFinal_kg: 0 });
 
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    const p_i_bar = pressureUnit === 'psi' ? psiToBar(piInput) : piInput;
-    const p_f_bar = pressureUnit === 'psi' ? psiToBar(pfInput) : pfInput;
+    const fetchCalculation = async () => {
+      setIsLoading(true);
+      try {
+        const p_i_bar = pressureUnit === 'psi' ? psiToBar(piInput) : piInput;
+        const p_f_bar = pressureUnit === 'psi' ? psiToBar(pfInput) : pfInput;
 
-    const t_i_K = celsiusToKelvin(tiInput);
-    const t_f_K = celsiusToKelvin(tfInput);
+        const t_i_K = celsiusToKelvin(tiInput);
+        const t_f_K = celsiusToKelvin(tfInput);
 
-    const initial = { pressure_bar: Number(p_i_bar), temperature_K: t_i_K };
-    const final = { pressure_bar: Number(p_f_bar), temperature_K: t_f_K };
+        const calculated = await thermodynamicsService.calculateTransfer(
+          Number(p_i_bar), t_i_K, Number(p_f_bar), t_f_K, capacity
+        );
+        
+        setResult({
+          mass_kg: calculated.massTransferredKg,
+          volume_Sm3: calculated.volumeTransferredSm3,
+          massInitial_kg: calculated.initialMassKg,
+          massFinal_kg: calculated.finalMassKg
+        });
+      } catch (error) {
+        console.error("Error al calcular la termodinámica:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    const calculated = calculateTransfer(initial, final, capacity);
-    setResult(calculated);
+    fetchCalculation();
   }, [capacity, pressureUnit, piInput, tiInput, pfInput, tfInput]);
 
   const handleSave = () => {

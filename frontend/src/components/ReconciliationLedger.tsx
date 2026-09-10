@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { History, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
-export default function ReconciliationLedger({ records, onAddSale }) {
+import { ReconciliationRecord } from '../core/api/reconciliation.service';
+
+export default function ReconciliationLedger({ records, onAddSale }: { records: ReconciliationRecord[], onAddSale: (id: string, vol: number) => void }) {
   return (
     <div className="brutal-card flex flex-col h-full bg-white">
       <div className="flex items-center gap-4 border-b-4 border-black pb-6 mb-8">
@@ -23,32 +25,32 @@ export default function ReconciliationLedger({ records, onAddSale }) {
           </div>
         ) : (
           records.map((record) => {
-            const hasSale = record.saleVolume_Sm3 !== undefined;
-            const discrepancy = hasSale ? record.volume_Sm3 - record.saleVolume_Sm3 : 0;
-            const percentage = hasSale ? (discrepancy / record.volume_Sm3) * 100 : 0;
+            const hasSale = record.saleVolumeSm3 !== undefined && record.saleVolumeSm3 !== null;
+            const discrepancy = hasSale ? record.calculatedVolumeSm3 - record.saleVolumeSm3! : 0;
+            const percentage = hasSale ? (discrepancy / record.calculatedVolumeSm3) * 100 : 0;
             const isWarning = percentage > 2 || percentage < -2;
 
             return (
               <div key={record.id} className="bg-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] p-6">
                 <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
                   <div className="text-sm font-bold bg-black text-white px-3 py-1 uppercase tracking-widest">
-                    Mod {record.capacity.toLocaleString()}L
+                    Mod {record.moduleCapacityLiters.toLocaleString()}L
                   </div>
                   <div className="text-sm text-black font-mono font-bold">
-                    {new Date(record.timestamp).toLocaleString()}
+                    {new Date(record.createdAt).toLocaleString()}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div className="border-2 border-black p-4 bg-[#E2E8F0] relative">
                     <span className="absolute -top-3 left-4 bg-white border-2 border-black px-2 text-xs font-black uppercase tracking-widest">Carga</span>
-                    <p className="text-2xl font-black font-mono text-black mt-2">{record.volume_Sm3.toFixed(2)} <span className="text-base text-slate-600 font-sans">Sm³</span></p>
+                    <p className="text-2xl font-black font-mono text-black mt-2">{record.calculatedVolumeSm3.toFixed(2)} <span className="text-base text-slate-600 font-sans">Sm³</span></p>
                   </div>
                   
                   <div className="border-2 border-black p-4 bg-white relative">
                     <span className="absolute -top-3 left-4 bg-white border-2 border-black px-2 text-xs font-black uppercase tracking-widest">Venta</span>
                     {hasSale ? (
-                      <p className="text-2xl font-black font-mono text-black mt-2">{record.saleVolume_Sm3.toFixed(2)} <span className="text-base text-slate-600 font-sans">Sm³</span></p>
+                      <p className="text-2xl font-black font-mono text-black mt-2">{record.saleVolumeSm3!.toFixed(2)} <span className="text-base text-slate-600 font-sans">Sm³</span></p>
                     ) : (
                       <span className="text-sm font-bold text-slate-400 block mt-3 uppercase">Pendiente</span>
                     )}

@@ -1,0 +1,38 @@
+// Este es tu archivo de esquema Prisma,
+// aprende más sobre él en la documentación: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Modelo de Base de Datos (Libro Mayor de Conciliación)
+model ReconciliationRecord {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now())
+  
+  // Capacidad del módulo de transporte
+  moduleCapacityLiters Float
+  
+  // Estado inicial antes de la descarga
+  initialPressureBar   Float
+  initialTempK         Float
+  
+  // Estado final tras la descarga
+  finalPressureBar     Float
+  finalTempK           Float
+  
+  // Resultados del Motor Termodinámico (Reglas de Negocio)
+  calculatedMassKg     Float
+  calculatedVolumeSm3  Float
+  
+  // Venta en estación (Puede ser nulo hasta que se registre la venta física)
+  saleVolumeSm3        Float?
+  
+  @@map("reconciliation_records") // Nombre de tabla en la base de datos
+}
