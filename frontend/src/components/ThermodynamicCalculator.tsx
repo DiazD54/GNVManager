@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { thermodynamicsService } from '../core/api/thermodynamic.service';
 import { psiToBar, celsiusToKelvin, barToPsi } from '../core/utils/UnitConversion';
 import { MODULE_PRESETS } from '../domain/modulePresets';
-import { ArrowRight, Gauge, Thermometer, Activity, Check } from 'lucide-react';
+import { ArrowRight, Gauge, Thermometer, Activity, Check, Snowflake } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 export default function ThermodynamicCalculator({ onSaveCharge }) {
@@ -14,7 +14,17 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
   const [pfInput, setPfInput] = useState(250);
   const [tfInput, setTfInput] = useState(45);
 
-  const [result, setResult] = useState({ mass_kg: 0, volume_Sm3: 0, massInitial_kg: 0, massFinal_kg: 0 });
+  const [result, setResult] = useState({ 
+    mass_kg: 0, 
+    volume_Sm3: 0, 
+    massInitial_kg: 0, 
+    massFinal_kg: 0,
+    zInitial: 1.0,
+    zFinal: 1.0,
+    stabilizedPressureBar: 0,
+    stabilizedTempCelsius: 20,
+    thermalPressureLossBar: 0
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
 
@@ -36,7 +46,12 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
           mass_kg: calculated.massTransferredKg,
           volume_Sm3: calculated.volumeTransferredSm3,
           massInitial_kg: calculated.initialMassKg,
-          massFinal_kg: calculated.finalMassKg
+          massFinal_kg: calculated.finalMassKg,
+          zInitial: calculated.zInitial ?? 1.0,
+          zFinal: calculated.zFinal ?? 1.0,
+          stabilizedPressureBar: calculated.stabilizedPressureBar ?? 0,
+          stabilizedTempCelsius: calculated.stabilizedTempCelsius ?? 20,
+          thermalPressureLossBar: calculated.thermalPressureLossBar ?? 0
         });
       } catch (error) {
         console.error("Error al calcular la termodinámica:", error);
@@ -67,6 +82,9 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
   const finalPercent = Math.min(100, Math.max(0, (pfInput / maxNominalPressure) * 100));
   const deltaPercent = Math.max(0, Math.min(100 - initialPercent, finalPercent - initialPercent));
   const deltaPressure = Math.max(0, pfInput - piInput);
+
+  const stabilizedPressureDisp = pressureUnit === 'psi' ? barToPsi(result.stabilizedPressureBar) : result.stabilizedPressureBar;
+  const thermalPressureLossDisp = pressureUnit === 'psi' ? barToPsi(result.thermalPressureLossBar) : result.thermalPressureLossBar;
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,8 +152,8 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
         <div className="ui-card flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-serif mb-6 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
-              <span className="ui-badge bg-[var(--color-surface-hover)] border-[var(--color-border)] text-[var(--color-text-secondary)]">Estado 1</span>
-              Condición Inicial
+              <span className="ui-badge bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">Estado 1</span>
+              Condición Inicial (Talón)
             </h3>
             
             <div className="space-y-5">
@@ -169,9 +187,17 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
             </div>
           </div>
           
-          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center">
-            <span className="text-sm font-medium text-[var(--color-text-secondary)]">Masa Calculada</span>
-            <span className="font-mono text-lg">{result.massInitial_kg.toFixed(2)} kg</span>
+          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase">Factor Z₁:</span>
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-primary)]">
+                {result.zInitial ? result.zInitial.toFixed(4) : '1.0000'}
+              </span>
+            </div>
+            <div>
+              <span className="text-xs text-[var(--color-text-secondary)] mr-1.5">Masa:</span>
+              <span className="font-mono text-base font-semibold">{result.massInitial_kg.toFixed(2)} kg</span>
+            </div>
           </div>
         </div>
 
@@ -184,7 +210,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
         <div className="ui-card flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-serif mb-6 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
-              <span className="ui-badge bg-[var(--color-surface-hover)] border-[var(--color-border)] text-[var(--color-accent)] shadow-[0_0_10px_var(--color-accent-glow)]">Estado 2</span>
+              <span className="ui-badge bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-accent)]">Estado 2</span>
               Corte Compresor
             </h3>
             
@@ -219,9 +245,17 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
             </div>
           </div>
           
-          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center">
-            <span className="text-sm font-medium text-[var(--color-text-secondary)]">Masa Calculada</span>
-            <span className="font-mono text-lg">{result.massFinal_kg.toFixed(2)} kg</span>
+          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center text-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase">Factor Z₂:</span>
+              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-accent)]">
+                {result.zFinal ? result.zFinal.toFixed(4) : '1.0000'}
+              </span>
+            </div>
+            <div>
+              <span className="text-xs text-[var(--color-text-secondary)] mr-1.5">Masa:</span>
+              <span className="font-mono text-base font-semibold">{result.massFinal_kg.toFixed(2)} kg</span>
+            </div>
           </div>
         </div>
       </div>
@@ -274,6 +308,33 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
           <span>0 {pressureUnit}</span>
           <span className="text-center opacity-60">Escala de Servicio ({maxNominalPressure} {pressureUnit} Nom.)</span>
           <span>{maxNominalPressure} {pressureUnit}</span>
+        </div>
+      </div>
+
+      {/* Pronóstico de Estabilización Térmica en Reposo */}
+      <div className="ui-card p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 border border-blue-500/20">
+            <Snowflake className="w-5 h-5 stroke-[1.75px]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">Presión Estabilizada en Reposo ({result.stabilizedTempCelsius}°C)</h4>
+              <span className="text-[10px] font-mono uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold">
+                Anti-Merma Falsa
+              </span>
+            </div>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-1 max-w-xl leading-relaxed">
+              Al enfriarse el gas de <strong className="font-mono text-[var(--color-text-primary)]">{tfInput}°C</strong> a <strong className="font-mono text-[var(--color-text-primary)]">{result.stabilizedTempCelsius}°C</strong> ambiente, el manómetro caerá normalmente <strong className="text-blue-600 dark:text-blue-400 font-mono">-{thermalPressureLossDisp.toFixed(1)} {pressureUnit}</strong> por contracción térmica isocórica. <span className="underline decoration-blue-500/30">No representa fuga ni pérdida de masa.</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="text-left sm:text-right shrink-0 sm:border-l sm:border-[var(--color-border)] sm:pl-6 pt-3 sm:pt-0 border-t sm:border-t-0 border-[var(--color-border)]">
+          <span className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider block mb-0.5">Lectura Manométrica Fría</span>
+          <span className="text-2xl font-mono font-bold text-[var(--color-text-primary)] tracking-tight">
+            {stabilizedPressureDisp.toFixed(1)} <span className="text-sm font-sans font-normal text-[var(--color-text-secondary)]">{pressureUnit}</span>
+          </span>
         </div>
       </div>
 

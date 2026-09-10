@@ -6,6 +6,11 @@ export interface TransferResult {
   volumeTransferredSm3: number;
   initialMassKg: number;
   finalMassKg: number;
+  zInitial: number;
+  zFinal: number;
+  stabilizedPressureBar: number;
+  stabilizedTempCelsius: number;
+  thermalPressureLossBar: number;
 }
 
 export interface IThermodynamicsService {
