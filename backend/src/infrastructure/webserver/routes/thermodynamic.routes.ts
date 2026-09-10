@@ -12,5 +12,6 @@ const thermodynamicController = new ThermodynamicController();
 // pero dejaremos la ruta abierta por ahora para asegurar que el Frontend pueda conectarse
 // sin necesidad de hacer el flujo de login completo aún.
 router.post('/calculate', thermodynamicController.calculateTransfer);
+router.post('/calculate-batch', thermodynamicController.calculateBatch);
 
 export default router;

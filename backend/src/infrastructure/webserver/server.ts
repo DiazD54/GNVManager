@@ -24,13 +24,25 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// 4. Rate Limiting (Prevención DDoS y Fuerza Bruta)
-const limiter = rateLimit({
+// 4. Rate Limiting (Seguridad en Login y Alto Rendimiento para Cálculos Internos)
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Límite de 100 peticiones por IP cada 15 min
-  message: 'Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos.',
+  max: 50, // 50 intentos en login
+  message: { success: false, error: 'Demasiados intentos de acceso, intente de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use('/api/', limiter);
+app.use('/api/v1/auth/login', authLimiter);
+
+// Límite amplio para operaciones internas (cálculos masivos de rack y reconciliación)
+const internalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10000, // 10,000 peticiones cada 15 min para uso interno continuo
+  message: { success: false, error: 'Demasiadas peticiones desde esta IP, intente de nuevo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', internalApiLimiter);
 
 // Rutas (Interfaces / Adapters)
 app.use('/api/v1/auth', authRoutes);

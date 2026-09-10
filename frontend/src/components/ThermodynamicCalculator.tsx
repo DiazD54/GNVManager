@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { thermodynamicsService } from '../core/api/thermodynamic.service';
 import { psiToBar, celsiusToKelvin, barToPsi } from '../core/utils/UnitConversion';
 import { MODULE_PRESETS } from '../domain/modulePresets';
-import { ArrowRight, Gauge, Thermometer, Activity, Check, Snowflake } from 'lucide-react';
+import { Gauge, Thermometer, Check, ChevronDown, ChevronUp, Snowflake, Activity } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-export default function ThermodynamicCalculator({ onSaveCharge }) {
+export default function ThermodynamicCalculator({ onSaveCharge }: { onSaveCharge: (data: any) => void }) {
   const [capacity, setCapacity] = useState(MODULE_PRESETS[0].capacity_L);
-  const [pressureUnit, setPressureUnit] = useState('bar');
+  const [pressureUnit, setPressureUnit] = useState<'bar' | 'psi'>('bar');
 
   const [piInput, setPiInput] = useState(50);
   const [tiInput, setTiInput] = useState(25);
@@ -27,9 +27,12 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
-    const fetchCalculation = async () => {
+    let isCancelled = false;
+
+    const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
         const p_i_bar = pressureUnit === 'psi' ? psiToBar(piInput) : piInput;
@@ -42,25 +45,32 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
           Number(p_i_bar), t_i_K, Number(p_f_bar), t_f_K, capacity
         );
         
-        setResult({
-          mass_kg: calculated.massTransferredKg,
-          volume_Sm3: calculated.volumeTransferredSm3,
-          massInitial_kg: calculated.initialMassKg,
-          massFinal_kg: calculated.finalMassKg,
-          zInitial: calculated.zInitial ?? 1.0,
-          zFinal: calculated.zFinal ?? 1.0,
-          stabilizedPressureBar: calculated.stabilizedPressureBar ?? 0,
-          stabilizedTempCelsius: calculated.stabilizedTempCelsius ?? 20,
-          thermalPressureLossBar: calculated.thermalPressureLossBar ?? 0
-        });
+        if (!isCancelled) {
+          setResult({
+            mass_kg: calculated.massTransferredKg,
+            volume_Sm3: calculated.volumeTransferredSm3,
+            massInitial_kg: calculated.initialMassKg,
+            massFinal_kg: calculated.finalMassKg,
+            zInitial: calculated.zInitial ?? 1.0,
+            zFinal: calculated.zFinal ?? 1.0,
+            stabilizedPressureBar: calculated.stabilizedPressureBar ?? 0,
+            stabilizedTempCelsius: calculated.stabilizedTempCelsius ?? 20,
+            thermalPressureLossBar: calculated.thermalPressureLossBar ?? 0
+          });
+        }
       } catch (error) {
         console.error("Error al calcular la termodinámica:", error);
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
-    };
+    }, 150);
 
-    fetchCalculation();
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [capacity, pressureUnit, piInput, tiInput, pfInput, tfInput]);
 
   const handleSave = () => {
@@ -77,35 +87,33 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
     setTimeout(() => setIsSavedFeedback(false), 2000);
   };
 
-  const maxNominalPressure = pressureUnit === 'psi' ? 3600 : 250;
-  const initialPercent = Math.min(100, Math.max(0, (piInput / maxNominalPressure) * 100));
-  const finalPercent = Math.min(100, Math.max(0, (pfInput / maxNominalPressure) * 100));
-  const deltaPercent = Math.max(0, Math.min(100 - initialPercent, finalPercent - initialPercent));
   const deltaPressure = Math.max(0, pfInput - piInput);
+  const maxNominalPressure = pressureUnit === 'psi' ? 3600 : 250;
+  const fillPercent = Math.min(100, Math.max(0, (pfInput / maxNominalPressure) * 100));
 
   const stabilizedPressureDisp = pressureUnit === 'psi' ? barToPsi(result.stabilizedPressureBar) : result.stabilizedPressureBar;
   const thermalPressureLossDisp = pressureUnit === 'psi' ? barToPsi(result.thermalPressureLossBar) : result.thermalPressureLossBar;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="space-y-6 w-full max-w-5xl mx-auto animate-fade-in">
       
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-slate-300 dark:border-zinc-700 pb-6 gap-6">
+      {/* Encabezado Simple y Limpio */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-zinc-800 gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-            <h2 className="text-2xl font-serif text-[var(--color-text-primary)]">Calculadora Termodinámica</h2>
-            <span className="ui-badge bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-secondary)] text-[10px] font-mono tracking-wider">
-              AGA-8 DC-92 • ISO 12213-2
-            </span>
-          </div>
-          <p className="text-sm text-[var(--color-text-secondary)]">Calcula la transferencia de masa y propiedades termodinámicas para módulos GNV.</p>
+          <h2 className="text-xl font-serif font-bold text-[var(--color-text-primary)]">
+            Cálculo de Módulo Individual
+          </h2>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            Estimación termodinámica de transferencia de gas natural comprimido (AGA8 / ISO 6976)
+          </p>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Módulo</span>
+
+        {/* Controles de Módulo y Unidad */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Módulo:</span>
             <Select value={capacity.toString()} onValueChange={(val) => setCapacity(Number(val))}>
-              <SelectTrigger className="w-[180px] h-10 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs font-medium">
+              <SelectTrigger className="w-44 h-8 bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-xs">
                 <SelectValue placeholder="Seleccionar módulo" />
               </SelectTrigger>
               <SelectContent>
@@ -118,256 +126,263 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
             </Select>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Unidad</span>
-            <Select 
-              value={pressureUnit} 
-              onValueChange={(newUnit) => {
-                if (newUnit === 'psi' && pressureUnit === 'bar') {
-                  setPiInput(Math.round(barToPsi(piInput)));
-                  setPfInput(Math.round(barToPsi(pfInput)));
-                } else if (newUnit === 'bar' && pressureUnit === 'psi') {
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-700 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                if (pressureUnit === 'psi') {
                   setPiInput(Math.round(psiToBar(piInput)));
                   setPfInput(Math.round(psiToBar(pfInput)));
+                  setPressureUnit('bar');
                 }
-                setPressureUnit(newUnit);
               }}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                pressureUnit === 'bar' ? 'bg-white dark:bg-zinc-900 shadow-xs font-semibold text-slate-900 dark:text-zinc-100' : 'text-slate-500'
+              }`}
             >
-              <SelectTrigger className="w-[100px] h-10 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs font-medium">
-                <SelectValue placeholder="Unidad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bar">bar</SelectItem>
-                <SelectItem value="psi">psi</SelectItem>
-              </SelectContent>
-            </Select>
+              bar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (pressureUnit === 'bar') {
+                  setPiInput(Math.round(barToPsi(piInput)));
+                  setPfInput(Math.round(barToPsi(pfInput)));
+                  setPressureUnit('psi');
+                }
+              }}
+              className={`px-2.5 py-1 rounded-md transition-colors ${
+                pressureUnit === 'psi' ? 'bg-white dark:bg-zinc-900 shadow-xs font-semibold text-slate-900 dark:text-zinc-100' : 'text-slate-500'
+              }`}
+            >
+              psi
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Bento Grid layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+      {/* Panel Principal: Entradas (Izquierda) vs Resultado (Derecha) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
-        {/* Initial State */}
-        <div className="ui-card flex flex-col justify-between">
-          <div>
-            <h3 className="text-lg font-serif mb-6 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
-              <span className="ui-badge bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">Estado 1</span>
-              Condición Inicial (Talón)
-            </h3>
-            
-            <div className="space-y-5">
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  <Gauge className="w-4 h-4 stroke-[1.5px]"/> Presión Remanente
-                </label>
-                <div className="relative">
-                  <input 
-                    type="number" min="0" step="1"
-                    value={piInput} onChange={(e) => setPiInput(Number(e.target.value))}
-                    className="ui-input text-lg pr-14"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-secondary)] font-mono">{pressureUnit}</span>
-                </div>
-              </div>
-              
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  <Thermometer className="w-4 h-4 stroke-[1.5px]"/> Temperatura Remanente
-                </label>
-                <div className="relative">
-                  <input 
-                    type="number" step="0.1"
-                    value={tiInput} onChange={(e) => setTiInput(Number(e.target.value))}
-                    className="ui-input text-lg pr-12"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-secondary)] font-mono">°C</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Columna Izquierda: Formulario Directo sin cajas anidadas (7 cols) */}
+        <div className="lg:col-span-7 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-6 space-y-6 shadow-sm">
           
-          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center text-sm">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase">Factor Z₁:</span>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-primary)]">
-                {result.zInitial ? result.zInitial.toFixed(4) : '1.0000'}
+          {/* Condición Inicial */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                1. Condición Inicial (Remanente)
+              </span>
+              <span className="text-[11px] font-mono text-slate-400">
+                Masa inicial: {result.massInitial_kg.toFixed(1)} kg
               </span>
             </div>
-            <div>
-              <span className="text-xs text-[var(--color-text-secondary)] mr-1.5">Masa:</span>
-              <span className="font-mono text-base font-semibold">{result.massInitial_kg.toFixed(2)} kg</span>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+                  Presión Remanente ({pressureUnit})
+                </label>
+                <div className="relative">
+                  <Gauge className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={piInput}
+                    onChange={(e) => setPiInput(Number(e.target.value))}
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/60 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+                  Temperatura Remanente (°C)
+                </label>
+                <div className="relative">
+                  <Thermometer className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={tiInput}
+                    onChange={(e) => setTiInput(Number(e.target.value))}
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/60 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Central arrow for desktop */}
-        <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center justify-center bg-[var(--color-surface)] text-[var(--color-accent)] rounded-full w-9 h-9 border border-[var(--color-border)] shadow-sm z-10 hover:scale-105 transition-transform">
-          <ArrowRight className="w-4 h-4 stroke-[2px]" />
-        </div>
+          <div className="border-t border-slate-100 dark:border-zinc-800" />
 
-        {/* Final State */}
-        <div className="ui-card flex flex-col justify-between">
+          {/* Condición Final */}
           <div>
-            <h3 className="text-lg font-serif mb-6 flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
-              <span className="ui-badge bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-accent)]">Estado 2</span>
-              Corte Compresor
-            </h3>
-            
-            <div className="space-y-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+                2. Condición Final (Corte Compresor)
+              </span>
+              <span className="text-[11px] font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+                ΔP: +{deltaPressure} {pressureUnit}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  <Gauge className="w-4 h-4 stroke-[1.5px]"/> Presión Final
+                <label className="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+                  Presión Final ({pressureUnit})
                 </label>
                 <div className="relative">
-                  <input 
-                    type="number" min="0" step="1"
-                    value={pfInput} onChange={(e) => setPfInput(Number(e.target.value))}
-                    className="ui-input text-lg pr-14"
+                  <Gauge className="w-4 h-4 text-cyan-600 dark:text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pfInput}
+                    onChange={(e) => setPfInput(Number(e.target.value))}
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-cyan-300/80 dark:border-cyan-800 bg-cyan-50/20 dark:bg-cyan-950/20 font-mono font-bold text-sm text-cyan-800 dark:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-secondary)] font-mono">{pressureUnit}</span>
                 </div>
               </div>
-              
+
               <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] mb-2">
-                  <Thermometer className="w-4 h-4 stroke-[1.5px]"/> Temperatura Final
+                <label className="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+                  Temperatura Final (°C)
                 </label>
                 <div className="relative">
-                  <input 
-                    type="number" step="0.1"
-                    value={tfInput} onChange={(e) => setTfInput(Number(e.target.value))}
-                    className="ui-input text-lg pr-12"
+                  <Thermometer className="w-4 h-4 text-cyan-600 dark:text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={tfInput}
+                    onChange={(e) => setTfInput(Number(e.target.value))}
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/60 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--color-text-secondary)] font-mono">°C</span>
                 </div>
               </div>
             </div>
           </div>
+
+        </div>
+
+        {/* Columna Derecha: Resultado Principal y Acción Directa (5 cols) */}
+        <div className="lg:col-span-5 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 p-6 flex flex-col justify-between space-y-6 shadow-sm">
           
-          <div className="mt-8 pt-4 border-t border-[var(--color-border)] flex justify-between items-center text-sm">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-mono text-[var(--color-text-secondary)] uppercase">Factor Z₂:</span>
-              <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-accent)]">
-                {result.zFinal ? result.zFinal.toFixed(4) : '1.0000'}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-[var(--color-text-secondary)] mr-1.5">Masa:</span>
-              <span className="font-mono text-base font-semibold">{result.massFinal_kg.toFixed(2)} kg</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Micro Cylinder Gauge / Monitor de Llenado */}
-      <div className="ui-card p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5 text-[var(--color-accent)] animate-pulse" />
-            <span className="text-[var(--color-text-secondary)] uppercase tracking-wider font-semibold">Perfil de Presurización del Módulo</span>
-          </div>
-          <div className="flex items-center gap-3 text-[var(--color-text-secondary)]">
-            <span>ΔP Neta: <strong className="text-[var(--color-text-primary)] font-mono">+{deltaPressure} {pressureUnit}</strong></span>
-            <span>•</span>
-            <span>Llenado: <strong className="text-[var(--color-text-primary)] font-mono">{finalPercent.toFixed(0)}%</strong></span>
-          </div>
-        </div>
-
-        {/* Cylinder Fill Bar Graphic */}
-        <div className="relative h-5 w-full rounded-full bg-slate-100 dark:bg-zinc-800 border border-[var(--color-border)] overflow-hidden p-0.5 flex items-center">
-          {/* Remanente segment */}
-          <div 
-            className="h-full rounded-l-full bg-slate-300/60 dark:bg-zinc-700/60 border-r border-dashed border-[var(--color-border)] transition-all duration-500 flex items-center justify-end pr-1.5"
-            style={{ width: `${initialPercent}%` }}
-            title={`Remanente: ${piInput} ${pressureUnit}`}
-          >
-            {initialPercent >= 15 && (
-              <span className="text-[9px] font-mono text-[var(--color-text-secondary)] font-semibold">
-                {piInput}
-              </span>
-            )}
-          </div>
-
-          {/* Transferida (Delta) segment - Electric Cyan gradient */}
-          <div 
-            className="h-full bg-gradient-to-r from-blue-600 via-cyan-500 to-cyan-400 rounded-r-full shadow-xs transition-all duration-500 flex items-center justify-center min-w-[2px]"
-            style={{ width: `${deltaPercent}%` }}
-            title={`Inyección Neta: +${deltaPressure} ${pressureUnit}`}
-          >
-            {deltaPercent >= 12 && (
-              <span className="text-[10px] font-mono text-white font-bold tracking-tight">
-                +{deltaPressure}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Gauge Scale Markers */}
-        <div className="flex justify-between text-[10px] font-mono text-[var(--color-text-secondary)] px-1">
-          <span>0 {pressureUnit}</span>
-          <span className="text-center opacity-60">Escala de Servicio ({maxNominalPressure} {pressureUnit} Nom.)</span>
-          <span>{maxNominalPressure} {pressureUnit}</span>
-        </div>
-      </div>
-
-      {/* Pronóstico de Estabilización Térmica en Reposo */}
-      <div className="ui-card p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 border border-blue-500/20">
-            <Snowflake className="w-5 h-5 stroke-[1.75px]" />
-          </div>
           <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h4 className="text-sm font-semibold text-[var(--color-text-primary)]">Presión Estabilizada en Reposo ({result.stabilizedTempCelsius}°C)</h4>
-              <span className="text-[10px] font-mono uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-bold">
-                Anti-Merma Falsa
-              </span>
-            </div>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-1 max-w-xl leading-relaxed">
-              Al enfriarse el gas de <strong className="font-mono text-[var(--color-text-primary)]">{tfInput}°C</strong> a <strong className="font-mono text-[var(--color-text-primary)]">{result.stabilizedTempCelsius}°C</strong> ambiente, el manómetro caerá normalmente <strong className="text-blue-600 dark:text-blue-400 font-mono">-{thermalPressureLossDisp.toFixed(1)} {pressureUnit}</strong> por contracción térmica isocórica. <span className="underline decoration-blue-500/30">No representa fuga ni pérdida de masa.</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="text-left sm:text-right shrink-0 sm:border-l sm:border-[var(--color-border)] sm:pl-6 pt-3 sm:pt-0 border-t sm:border-t-0 border-[var(--color-border)]">
-          <span className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider block mb-0.5">Lectura Manométrica Fría</span>
-          <span className="text-2xl font-mono font-bold text-[var(--color-text-primary)] tracking-tight">
-            {stabilizedPressureDisp.toFixed(1)} <span className="text-sm font-sans font-normal text-[var(--color-text-secondary)]">{pressureUnit}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Results Panel */}
-      <div className="ui-card flex flex-col md:flex-row items-center justify-between gap-6 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
-        <div className="flex-1 w-full text-center md:text-left">
-          <p className="text-sm text-[var(--color-text-secondary)] font-medium mb-1">Carga Neta Transferida</p>
-          <div className="flex items-baseline justify-center md:justify-start gap-4 flex-wrap">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-serif tracking-tight text-[var(--color-text-primary)]">{result.mass_kg.toFixed(2)}</span>
-              <span className="text-sm text-[var(--color-text-secondary)] font-medium">kg</span>
-            </div>
-            <span className="text-[var(--color-text-secondary)] text-2xl font-light">/</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-serif tracking-tight text-[var(--color-text-primary)]">{result.volume_Sm3.toFixed(2)}</span>
-              <span className="text-sm text-[var(--color-text-secondary)] font-medium">Sm³</span>
-            </div>
-          </div>
-        </div>
-        
-        <button 
-          onClick={handleSave}
-          className={`ui-button w-full md:w-auto transition-all duration-300 ${isSavedFeedback ? 'bg-emerald-600 hover:bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)]' : ''}`}
-        >
-          {isSavedFeedback ? (
-            <span className="flex items-center gap-2">
-              <Check className="w-4 h-4 stroke-[2.5px]" />
-              Guardado
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+              Carga Neta Transferida
             </span>
+            <p className="text-xs text-slate-400">
+              Balance volumétrico estándar AGA8
+            </p>
+
+            <div className="mt-6 space-y-4">
+              
+              {/* Volumen Destacado */}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800">
+                <span className="text-[11px] font-mono text-slate-500 uppercase">Volumen Normalizado</span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-4xl font-serif font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+                    {result.volume_Sm3.toFixed(2)}
+                  </span>
+                  <span className="text-sm font-sans font-medium text-slate-500">Sm³</span>
+                </div>
+              </div>
+
+              {/* Masa Destacada */}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800">
+                <span className="text-[11px] font-mono text-slate-500 uppercase">Masa Transferida</span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-3xl font-serif font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+                    {result.mass_kg.toFixed(2)}
+                  </span>
+                  <span className="text-sm font-sans font-medium text-slate-500">kg</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Botón de Guardar */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isLoading}
+              className={`w-full py-3 px-4 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-2 ${
+                isSavedFeedback
+                  ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900'
+              }`}
+            >
+              {isSavedFeedback ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5px]" />
+                  <span>Guardado en Libro Mayor</span>
+                </>
+              ) : (
+                <span>Guardar Cálculo</span>
+              )}
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Sección Colapsable: Parámetros Avanzados y Estabilización Térmica (Opcional) */}
+      <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/40 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="w-full px-5 py-3 flex items-center justify-between text-xs font-medium text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+            <span>Ver Parámetros Termodinámicos y Pronóstico Térmico en Reposo</span>
+          </div>
+          {showAdvanced ? (
+            <ChevronUp className="w-4 h-4 text-slate-400" />
           ) : (
-            'Guardar Cálculo'
+            <ChevronDown className="w-4 h-4 text-slate-400" />
           )}
         </button>
+
+        {showAdvanced && (
+          <div className="p-5 border-t border-slate-200 dark:border-zinc-800 space-y-4 text-xs font-mono bg-slate-50/50 dark:bg-zinc-900/60">
+            
+            {/* Factores Z */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                <span className="text-[10px] text-slate-500 uppercase block">Factor Z₁ (Remanente)</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-zinc-200">{result.zInitial.toFixed(4)}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                <span className="text-[10px] text-slate-500 uppercase block">Factor Z₂ (Corte)</span>
+                <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">{result.zFinal.toFixed(4)}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                <span className="text-[10px] text-slate-500 uppercase block">Capacidad Módulo</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-zinc-200">{capacity.toLocaleString()} L</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                <span className="text-[10px] text-slate-500 uppercase block">Llenado Escala</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-zinc-200">{fillPercent.toFixed(0)}%</span>
+              </div>
+            </div>
+
+            {/* Pronóstico de Estabilización Fría */}
+            <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20 flex items-start gap-3">
+              <Snowflake className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="flex-1 text-[11px] leading-relaxed text-slate-600 dark:text-zinc-300">
+                <span className="font-bold text-slate-900 dark:text-zinc-100">Pronóstico Térmico Isocórico: </span>
+                Al enfriarse de <span className="font-bold">{tfInput}°C</span> a <span className="font-bold">{result.stabilizedTempCelsius}°C</span> ambiente, 
+                la aguja caerá normalmente a <strong className="text-blue-600 dark:text-blue-400">{stabilizedPressureDisp.toFixed(1)} {pressureUnit}</strong> (pérdida térmica normal de -{thermalPressureLossDisp.toFixed(1)} {pressureUnit}). No constituye merma ni fuga.
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
     </div>

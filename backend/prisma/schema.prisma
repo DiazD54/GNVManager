@@ -16,10 +16,22 @@ model ReconciliationRecord {
   id                   String   @id @default(uuid())
   createdAt            DateTime @default(now())
   
-  // Capacidad del módulo de transporte
+  // Tipo de registro: "INDIVIDUAL" | "RACK_PARENT" | "RACK_CHILD" | "MANIFOLD_PARENT" | "MANIFOLD_CHILD"
+  recordType           String   @default("INDIVIDUAL")
+  
+  // Identificador opcional (ej. "RACK-01" o "PLACA-GNV") y posición (1 a 11)
+  moduleIdentifier     String?
+  positionNumber       Int?
+  
+  // Relación Jerárquica para Rack
+  parentId             String?
+  parent               ReconciliationRecord?  @relation("ManifoldHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children             ReconciliationRecord[] @relation("ManifoldHierarchy")
+  
+  // Capacidad del módulo o cilindro individual
   moduleCapacityLiters Float
   
-  // Estado inicial antes de la descarga
+  // Estado inicial
   initialPressureBar   Float
   initialTempK         Float
   
@@ -27,14 +39,14 @@ model ReconciliationRecord {
   finalPressureBar     Float
   finalTempK           Float
   
-  // Resultados del Motor Termodinámico (Reglas de Negocio)
+  // Resultados del Motor Termodinámico
   calculatedMassKg     Float
   calculatedVolumeSm3  Float
   
-  // Venta en estación (Puede ser nulo hasta que se registre la venta física)
+  // Venta en estación
   saleVolumeSm3        Float?
   
-  @@map("reconciliation_records") // Nombre de tabla en la base de datos
+  @@map("reconciliation_records")
 }
 
 // Modelo de Usuarios (Autenticación)
