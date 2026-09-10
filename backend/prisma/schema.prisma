@@ -36,3 +36,14 @@ model ReconciliationRecord {
   
   @@map("reconciliation_records") // Nombre de tabla en la base de datos
 }
+
+// Modelo de Usuarios (Autenticación)
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("user")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}

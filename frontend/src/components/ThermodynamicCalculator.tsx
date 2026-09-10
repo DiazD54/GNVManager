@@ -62,9 +62,9 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
 
   return (
     <div className="brutal-card flex flex-col gap-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b-4 border-black pb-6 gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b-4 border-slate-800 pb-6 gap-6">
         <h2 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
-          <Settings2 className="w-8 h-8 stroke-[3px]" />
+          <Settings2 className="w-8 h-8 stroke-[2px]" />
           Motor Térmico
         </h2>
         
@@ -115,7 +115,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative">
         {/* Condiciones Iniciales */}
         <div className="brutal-panel-inner bg-[#E2E8F0]">
-          <h3 className="text-2xl font-black uppercase mb-6 flex items-center gap-3 border-b-2 border-black pb-2">
+          <h3 className="text-2xl font-black uppercase mb-6 flex items-center gap-3 border-b-2 border-slate-800 pb-2">
             <span className="bg-black text-white w-8 h-8 flex items-center justify-center text-lg">1</span>
             Estado Inicial
           </h3>
@@ -123,7 +123,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
           <div className="space-y-6">
             <div>
               <label className="flex items-center justify-between text-sm font-bold uppercase mb-2">
-                <span className="flex items-center gap-2"><Gauge className="w-5 h-5 stroke-[3px]"/> Presión Remanente</span>
+                <span className="flex items-center gap-2"><Gauge className="w-5 h-5 stroke-[2px]"/> Presión Remanente</span>
               </label>
               <div className="relative">
                 <input 
@@ -137,7 +137,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
             
             <div>
               <label className="flex items-center justify-between text-sm font-bold uppercase mb-2">
-                <span className="flex items-center gap-2"><Thermometer className="w-5 h-5 stroke-[3px]"/> Temperatura Remanente</span>
+                <span className="flex items-center gap-2"><Thermometer className="w-5 h-5 stroke-[2px]"/> Temperatura Remanente</span>
               </label>
               <div className="relative">
                 <input 
@@ -149,20 +149,20 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
               </div>
             </div>
           </div>
-          <div className="mt-8 pt-4 border-t-2 border-black flex justify-between items-center">
+          <div className="mt-8 pt-4 border-t-2 border-slate-800 flex justify-between items-center">
             <span className="font-bold uppercase text-xs">Masa calculada</span>
             <span className="font-black font-mono text-xl">{result.massInitial_kg.toFixed(2)} kg</span>
           </div>
         </div>
 
         {/* Flecha central (solo desktop) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center justify-center bg-[#FFD700] border-4 border-black w-14 h-14 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-10">
-          <ArrowRight className="w-8 h-8 stroke-[3px] text-black" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex items-center justify-center bg-[#FFD700] border-2 border-slate-800 w-14 h-14 shadow-sm shadow-slate-300 z-10">
+          <ArrowRight className="w-8 h-8 stroke-[2px] text-black" />
         </div>
 
         {/* Condiciones Finales */}
         <div className="brutal-panel-inner bg-white">
-          <h3 className="text-2xl font-black uppercase mb-6 flex items-center gap-3 border-b-2 border-black pb-2">
+          <h3 className="text-2xl font-black uppercase mb-6 flex items-center gap-3 border-b-2 border-slate-800 pb-2">
             <span className="bg-black text-[#FFD700] w-8 h-8 flex items-center justify-center text-lg">2</span>
             Corte Compresor
           </h3>
@@ -170,7 +170,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
           <div className="space-y-6">
             <div>
               <label className="flex items-center justify-between text-sm font-bold uppercase mb-2">
-                <span className="flex items-center gap-2"><Gauge className="w-5 h-5 stroke-[3px]"/> Presión Final</span>
+                <span className="flex items-center gap-2"><Gauge className="w-5 h-5 stroke-[2px]"/> Presión Final</span>
               </label>
               <div className="relative">
                 <input 
@@ -184,7 +184,7 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
             
             <div>
               <label className="flex items-center justify-between text-sm font-bold uppercase mb-2">
-                <span className="flex items-center gap-2"><Thermometer className="w-5 h-5 stroke-[3px]"/> Temperatura Final</span>
+                <span className="flex items-center gap-2"><Thermometer className="w-5 h-5 stroke-[2px]"/> Temperatura Final</span>
               </label>
               <div className="relative">
                 <input 
@@ -196,17 +196,17 @@ export default function ThermodynamicCalculator({ onSaveCharge }) {
               </div>
             </div>
           </div>
-          <div className="mt-8 pt-4 border-t-2 border-black flex justify-between items-center">
+          <div className="mt-8 pt-4 border-t-2 border-slate-800 flex justify-between items-center">
             <span className="font-bold uppercase text-xs">Masa calculada</span>
             <span className="font-black font-mono text-xl">{result.massFinal_kg.toFixed(2)} kg</span>
           </div>
         </div>
       </div>
 
-      <div className="border-4 border-black bg-[#18181B] text-white p-8 flex flex-col xl:flex-row items-center justify-between gap-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+      <div className="border-2 border-slate-800 bg-[#18181B] text-white p-8 flex flex-col xl:flex-row items-center justify-between gap-8 shadow-md shadow-slate-300">
         <div className="flex items-center gap-6 w-full xl:w-auto">
-          <div className="bg-[#FFD700] p-4 border-2 border-black shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hidden md:block">
-            <Database className="w-12 h-12 text-black stroke-[3px]" />
+          <div className="bg-[#FFD700] p-4 border-2 border-slate-800 shadow-sm shadow-slate-200 hidden md:block">
+            <Database className="w-12 h-12 text-black stroke-[2px]" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-[#FFD700] uppercase tracking-widest font-black mb-2">Carga Neta Transferida</p>
